@@ -1,4 +1,5 @@
-d = 30; m = 30; n_train = 10; p_pos_train = 0.1; p_pos = 0.7; p_pos_estimate = 0.7; 
+d = 30; n_train = 10; m = 60; 
+p_pos_train = 0.1; p_pos = 0.7; p_pos_estimate = 0.7; 
 eps = 0; t = 10; n_repeats = 1; theta_true = -1+ 2*rand(d,1); 
 theta_true = theta_true/norm(theta_true);
 
@@ -90,8 +91,8 @@ display(strcat('accuracy removing data (svm soft threshold): ', num2str(1-error_
 
 %Our Method: Fast Version selects the one with closest distribution match
 
-n_repeats = 5;
-n_iters = 15;
+n_repeats = 30;
+n_iters = 30;
 thetas_list = zeros(d,n_repeats); frac_pos_list = zeros(n_repeats, 1);
 error_fast_list = zeros(n_repeats, 1); 
 for tt = 1:n_repeats
@@ -117,15 +118,16 @@ for tt = 1:n_repeats
             errors_fast(rr+1) = sum(yz_est~=yz_true)/m;
             thetas(:,rr+1) = theta_curr_fast;
         end
-        [frac_pos_best, index] = min(abs(frac_pos - p_pos_estimate));
+        [~, index] = min(abs(frac_pos - p_pos_estimate)); frac_pos_best = frac_pos(index);
         error_fast_list(tt) = errors_fast(index);
         frac_pos_list(tt) = frac_pos_best; thetas_list(:,tt) = thetas(:,index);
     end
     
 end
 
-[frac_pos_best, index] = min(abs(frac_pos_list - p_pos_estimate));
-error = error_fast_list(index); best_theta = thetas_list(:,index);
+[~, index] = min(abs(frac_pos_list - p_pos_estimate)); frac_pos_best = frac_pos_list(index);
+feasible_solution_inds = find(frac_pos_list == frac_pos_best);
+error = mean(error_fast_list(feasible_solution_inds)); best_theta = thetas_list(:,index);
 display(strcat('accuracy our method, fast version, choice by frac: ', num2str(1-error)));
 yz_ours = sign(best_theta'*z);
 
@@ -138,7 +140,7 @@ function [v_beta, c_beta] = compute_vc_beta(t, beta, z, p)
     %beta should be current estimate of true theta
     
     [~,m] = size(z);
-    beta_z = t*beta'*z; 
+    beta_z = t*beta'*z;  beta_z(beta_z<-100) = -100;
     v_beta = sum((exp(-beta_z)./((1+exp(-beta_z)).^2)).*z*t, 2);
     c_beta = sum(sigmoid(t*beta_z)) - m*p - v_beta'*beta;
 end

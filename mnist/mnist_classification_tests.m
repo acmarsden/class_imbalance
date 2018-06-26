@@ -3,7 +3,7 @@ clear all;
 data_processing;
 
 [d, ~] = size(x); n_train = 500; n_test = 2000; p_train = 0.01; 
-p_test = 0.7; p_pos_estimate = 0.7; t = 10;
+p_test = 0.7; p_pos_estimate = 0.8; t = 10;
 
 
 % Generate test/training distribution with specified positive
@@ -49,7 +49,7 @@ end
 
 x_rw = [x_pos2, x_neg2];
 y_rw = [ones(1,nx_pos2), -ones(1,nx_neg2)];
-display(strcat('reweighting is finished, training set size:', num2str(sum(y_rw~=10))));
+%display(strcat('reweighting is finished, training set size:', num2str(sum(y_rw~=10))));
 margin = 2; ll = 1;
 cvx_begin quiet
     variable theta_reweight(d)
@@ -64,8 +64,8 @@ display(strcat('accuracy removing data (svm soft threshold): ', num2str(1-error_
 
 %Our Method: Fast Version selects the one with closest distribution match
 
-n_repeats = 20;
-n_iters = 25;
+n_repeats = 30;
+n_iters = 30;
 thetas_list = zeros(d,n_repeats); frac_pos_list = zeros(n_repeats, 1);
 error_fast_list = zeros(n_repeats, 1); 
 for tt = 1:n_repeats
