@@ -1,0 +1,152 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage,graphicx,psfrag,amsmath,amsfonts,verbatim}
+\usepackage[small,bf]{caption}
+\usepackage{bbm}
+\input defs.tex
+
+\bibliographystyle{alpha}
+
+\title{EE 364B Midterm Report}
+\author{Annie Marsden}
+
+\begin{document}
+
+\paragraph{Introduction}
+
+\paragraph{Method}
+We assume there exists some $\theta^{*}$ such that given datum $x$ we have response,
+\begin{equation*}
+y = \textrm{sign}(\theta^{*T}x)
+\end{equation*}
+or corrupted response
+\begin{equation*}
+y^{(\textrm{corr})} = \textrm{sign}(\theta^{*T}x + \epsilon),
+\end{equation*}
+for some bounded $\epsilon \in [-\alpha, \alpha]$. Assume we have training data: $ \{ (x_{1}, y_{1}), \cdots, (x_n, y_n) \} $ and we have test points: $\{ z_{1}, \cdots, z_{m} \}$ where $z_{i} \sim P_{t}$ is drawn from some test distribution such that $P_{t}(\textrm{sign}(\theta^{*T}z) = 1) = p$, where $p$ is known to us (perhaps through some domain expert). Let 
+\begin{equation*}
+D = -  \begin{bmatrix}
+       y_{1}x_{1}^{T}  \\
+    \vdots \\
+    y_{n}x_{n}^{T} \\
+\end{bmatrix}.
+\end{equation*}
+ We want to minimize, 
+\begin{equation}
+\label{original} 
+\begin{aligned}
+& \underset{\theta}{\text{minimize}}
+& & \big( \lvert \{ z_{i} \textrm{ s.t. } \theta^{T}z_{i} \geq 0 \} \lvert - mp \big)^{2} \\
+& \text{subject to}
+& & D\theta \preceq 0 \\
+\end{aligned}
+\end{equation}
+or the corrupted version 
+\begin{equation}
+\begin{aligned}
+& \underset{\theta}{\text{minimize}}
+& & \big( \lvert \{ z_{i} \textrm{ s.t. } \theta^{T}z_{i} \geq 0 \} \lvert - mp \big)^{2} \\
+& \text{subject to}
+& & D\theta \preceq \alpha \\
+\end{aligned}
+\end{equation}
+Instead of solving (\ref{original}) we solve,
+\begin{equation}
+\begin{aligned}
+& \underset{\theta}{\text{minimize}}
+& & \big( \sum \limits_{i=1}^{m} \sigma_{t}(\theta^{T}z_{i}) - mp \big)^{2} \\
+& \text{subject to}
+& & D\theta \preceq 0 \\
+\end{aligned}
+\end{equation}
+where $\sigma_{t}(x) = (1+\textrm{exp}(-tx))^{-1}$ and $t$ is a fixed constant ($t=10$ seems to work well). This is a convex-compositve formulation. Let $f(\theta) = \big( \sum \limits_{i=1}^{m} \sigma_{t}(\theta^{T}z_{i}) - mp \big)^{2}$ then $f(\theta) = h(c(\theta))$ where $c(\theta) = \sum \limits_{i=1}^{m} \sigma_{t}(\theta^{T}z_{i}) - mp $ and $h(x) = x^{2}$. Note $h$ is convex and $c$ is smooth. We can use the convex composite prox-linear algorithm. Let 
+\begin{align*}
+\hat{f}_{\beta}(\theta) :&= h(c(\beta) + \nabla c(\beta)^{T}(\theta - \beta))  \\
+& = \bigg( \sum \limits_{i=1}^{m} \sigma_{t}(\theta^{T}z_{i}) - mp + \bigg[ \sum \limits_{i=1}^{m} \frac{e^{-\beta^{T}z_{i}}}{(1+e^{-\beta^{T}z_{i}})^{2}}z_{i} \bigg]^{T} (\theta - \beta) \bigg)^{2}.
+\end{align*}
+Let $\beta =\theta^{(k)}$, at iteration $k+1$ we have $\theta^{(k+1)}$ is the solution to,
+
+\begin{equation}
+\label{subproblem}
+\begin{aligned}
+& \underset{\theta}{\text{minimize}}
+& & \hat{f}_{\beta}(\theta) \\
+& \text{subject to}
+& & D\theta \preceq 0 \\
+\end{aligned}
+\end{equation}
+ To simplify notation let
+\begin{equation*}
+v_{\beta} := \sum \limits_{i=1}^{m} \frac{e^{-\beta^{T}z_{i}}}{(1+e^{-beta^{T}z_{i}})^{2}}z_{i},
+\end{equation*}
+and 
+\begin{equation*}
+c_{\beta} = \sum \limits_{i=1}^{m} \sigma_{t}(\beta^{T}z_{i}) - mp - v_{\beta}^{T}\beta.
+\end{equation*}
+Then we have that $\hat{f}_{\beta}(\theta) = (c_{\beta} + v_{\beta}^{T}\theta)^{2}$. The Lagrangian of (\ref{subproblem}) is,
+\begin{equation*}
+L(\theta, \lambda) = (c_{\beta} + v_{\beta}^{T}\theta)^{2} + \lambda^{T}D\theta.
+\end{equation*}
+Our problem is convex with an affine inequality constraint so Slater's holds and we consider the KKT conditions:
+\begin{enumerate}
+\item $\frac{\partial L}{\partial \theta} \lvert_{\theta = \theta^{*}} = 0 \implies 2(c_{\beta} + v_{\beta}^{T} \theta^{*})v_{\beta} + D^{T}\lambda^{*} = 0$ \\
+\item $\lambda^{*T}D\theta^{*} = 0$ \\
+\item $\lambda^{*} \succeq 0$ \\
+\item $D\theta^{*} \preceq 0 $
+\end{enumerate}
+By $(1)$ we have that $D^{T}\lambda^{*} = -2(c_{\beta} + v_{\beta}^{T}\theta^{*})v_{\beta} = \gamma v_{\beta}$ where $\gamma = -2(c_{\beta} + v_{\beta}^{T}\theta^{*})$. Plugging into $(2)$ we get $\gamma v_{\beta}^{T}\theta^{*} = 0$ so we have either $(a)$ $\gamma = 0$ or $(b)$ $v_{\beta}^{T}\theta^{*} = 0$. We can show (REFINE THIS) that only $(a)$ is possible, thus 
+\begin{equation*}
+D^{T}\lambda^{*} = 0 = -2(c_{\beta} + v_{\beta}^{T}\theta^{*}) v_{\beta} \implies -c_{\beta} = v_{\beta}^{T}\theta^{*}.
+\end{equation*}
+Thus we want to find $\theta^{*}$ such that 
+\begin{equation*}
+v_{\beta}^{T}\theta^{*} = -c_{\beta},
+\end{equation*}
+and
+\begin{equation*}
+D\theta^{*} \preceq 0.
+\end{equation*}
+We can do this in the following way: Let $\theta'$ be such that $D\theta'\preceq 0$. Then if we find some $s>0$ such that $v_{\beta}^{T}(s\theta') = -c_{\beta}$ we have $\theta^{*} = s\theta'$. Thus we have $s = \frac{-c_{\beta}}{v_{\beta}^{T}\theta'}>0$ which implies we need
+\begin{equation}
+\begin{cases}
+v_{\beta}^{T}\theta'>0, \textrm{ if } c_{\beta}<0 \\
+v_{\beta}^{T}\theta'<0, \textrm{ if } c_{\beta}>0. \\
+\end{cases}
+\end{equation}
+Let 
+\begin{equation*}
+\tilde{D} = \begin{bmatrix}
+       D  \\
+    \textrm{sign}(c_{\beta})v_{\beta}^{T} \\
+\end{bmatrix}.
+\end{equation*}
+To find $\theta'$ we notice that if there exists some $\theta$ such that $]\tilde D\theta \preceq 0$ then $\argmin \limits_{\lvert \lvert \theta \lvert \lvert_{2} \leq 1} \{ \ones^{T} \tilde D\theta \}$ will be feasible. Thus we get $\theta'$ as the solution to
+\begin{equation}
+\begin{aligned}
+& \underset{\theta}{\text{minimize}}
+& & \ones^{T}\tilde{D}\theta \\
+& \text{subject to}
+& & \lvert \lvert \theta \lvert \lvert_{2}^{2}\\
+\end{aligned}
+\end{equation}
+The Lagrangian is 
+\begin{equation*}
+L(\theta, \lambda) = \ones^{T}\tilde{D}\theta + \lambda(\lvert \lvert \theta \lvert \lvert_{2}^{2} - 1).
+\end{equation*}
+Again using KKT conditions we get 
+\begin{enumerate}
+\item $\frac{\partial L}{\partial \theta} \lvert_{\theta = \theta^{*}} = \tilde D^{T} \ones + 2\lambda \theta' = 0 \implies \theta' = \big(\frac{-1}{2\lambda} \big) \tilde D^{T} \ones$.
+\item $\lambda \succeq 0$.
+\end{enumerate}
+Since scaling of $\theta'$ doesn't matter (up to sign) we set $\theta' = -\tilde D^{T} \ones$ and recalling the definition of $\tilde D$ this gives
+\begin{equation}
+\theta' = \sum \limits_{i=1}^{n} y_{i}x_{i} - \textrm{sign}(c_{\beta})v_{\beta},
+\end{equation}
+and
+\begin{equation}
+\theta^{(k+1)} = \theta^{*} = -\frac{c_{\beta}}{v_{\beta}^{T}(\sum \limits_{i=1}^{n} y_{i}x_{i} - \textrm{sign}(c_{\beta})v_{\beta})} \bigg( \sum \limits_{i=1}^{n} y_{i}x_{i} - \textrm{sign}(c_{\beta})v_{\beta} \bigg).
+\end{equation}
+With this update we follow the prox-linear algorithm: INCLUDE FOR COMPLETENESS.
+
+\paragraph{Synthetic Experiments}
+\paragraph{Real Data Experiments}
+  \end{document}
